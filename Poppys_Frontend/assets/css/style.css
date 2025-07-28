@@ -586,7 +586,7 @@ body, html {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 32px; /* adjust as needed */
+  gap: 10px; /* adjust as needed */
 }
 /* ...existing code... */
 .machine-pie-card,
