@@ -7,7 +7,7 @@ import { FaDownload } from "react-icons/fa";
 import '../../assets/css/style.css'; // Import your CSS styles
 import axios from "axios";
 import * as XLSX from "xlsx";
-import { useLoading } from '../../main';
+import { useLoading } from "../../main.jsx";
 
 
 /* Table Headers */
@@ -67,7 +67,7 @@ function convertHHMMToDecimal(timeStr) {
   return hours + (minutes / 60);
 }
 
-export default function Machine({ tableOnly = false, from: propFrom = "", to: propTo = "", machineId: propMachineId = "", selectedOperatorId, lineId, hideControls = false, hideHeader = false, isConsolidated = false }) {
+export default function Machine({ tableOnly = false, from: propFrom = "", to: propTo = "", machineId: propMachineId = "", selectedOperatorId, lineId }) {
   const [from, setFrom] = useState(propFrom);
   const [to, setTo] = useState(propTo);
   const [machineId, setMachineId] = useState(propMachineId);
@@ -81,6 +81,7 @@ export default function Machine({ tableOnly = false, from: propFrom = "", to: pr
   const [showRawData, setShowRawData] = useState(false);
   const [rawData, setRawData] = useState([]);
   const [rawPage, setRawPage] = useState(1);
+  const { showLoading, hideLoading } = useLoading();
 
 
   // Update state when props change
@@ -115,8 +116,7 @@ export default function Machine({ tableOnly = false, from: propFrom = "", to: pr
   // Updated fetchRawData function with frontend filtering
   const fetchRawData = async () => {
     setLoading(true);
-    showLoading(); // ✅ Show global loading overlay
-    
+    showLoading();
     try {
       const params = {};
       // Don't send date filters to API, we'll filter on frontend
@@ -155,10 +155,9 @@ export default function Machine({ tableOnly = false, from: propFrom = "", to: pr
     } catch (err) {
       console.error("Raw data fetch error:", err);
       setRawData([]);
-    } finally {
-      setLoading(false);
-      hideLoading(); // ✅ Hide global loading overlay
     }
+    setLoading(false);
+    hideLoading();
   };
 
   
@@ -172,75 +171,73 @@ export default function Machine({ tableOnly = false, from: propFrom = "", to: pr
   // Fetch data from backend
   const fetchData = async () => {
     setLoading(true);
-    showLoading(); // ✅ Show global loading overlay
-    
+    showLoading();
     try {
       const params = {};
-      if (from) params.from = formatBackendDate(from);
-      if (to) params.to = formatBackendDate(to);
+
+      if (from) params.from = formatBackendDate(from); // Always use colons
+      if (to) params.to = formatBackendDate(to);       // Always use colons
       if (machineId) params.machine_id = machineId;
 
-      console.log("Fetching data with params:", params);
-      
       const res = await axios.get("http://localhost:8000/api/poppys-machine-logs/", { params });
       const backendRows = res.data.summary || [];
 
-      // Store tile data
+      // ✅ Store Tile 1 - productivity data for tiles
       const tile1Data = res.data.tile1_productivity || {};
       const tile2Data = res.data.tile2_needle_runtime || {};
       const tile3Data = res.data.tile3_sewing_speed || {};
-      const tile4Data = res.data.tile4_total_hours || {};
+      const tile4Data = res.data.tile4_total_hours || {};  // ✅ Add Tile 4 data
 
       const mappedRows = backendRows
-        .map((row, idx) => {
-          let rawDate = row["Date"] || row["DATE"] || row["date"] || "";
-          return {
-            sNo: row["S.no"] ?? idx + 1,
-            machineId: row["Machine ID"] ?? row["machine_id"] ?? "",
-            date: rawDate,
-            totalHours: row["Total Hours"] || "00:00",
-            sewing: row["Sewing Hours"] || "00:00",
-            idle: row["Idle Hours"] || "00:00",
-            rework: row["Rework Hours"] || "00:00",
-            noFeeding: row["No feeding Hours"] || "00:00",
-            meeting: row["Meeting Hours"] || "00:00",
-            maintenance: row["Maintenance Hours"] || "00:00",
-            needleBreak: row["Needle Break"] || "00:00",
-            totalHoursDecimal: convertHHMMToDecimal(row["Total Hours"]) || 0,
-            sewingDecimal: convertHHMMToDecimal(row["Sewing Hours"]) || 0,
-            idleDecimal: convertHHMMToDecimal(row["Idle Hours"]) || 0,
-            reworkDecimal: convertHHMMToDecimal(row["Rework Hours"]) || 0,
-            noFeedingDecimal: convertHHMMToDecimal(row["No feeding Hours"]) || 0,
-            meetingDecimal: convertHHMMToDecimal(row["Meeting Hours"]) || 0,
-            maintenanceDecimal: convertHHMMToDecimal(row["Maintenance Hours"]) || 0,
-            needleBreakDecimal: convertHHMMToDecimal(row["Needle Break"]) || 0,
-            pt: row["PT %"] ?? 0,
-            npt: row["NPT %"] ?? 0,
-            needleRuntime: row["Needle Time %"] ?? 0,
-            sewingSpeed: row["SPM"] ?? 0,
-            stitchCount: row["Stitch Count"] ?? 0,
-            tile1_productivity: tile1Data,
-            tile2_needle_runtime: tile2Data,
-            tile3_sewing_speed: tile3Data,
-            tile4_total_hours: tile4Data,
-          };
-        })
+  .map((row, idx) => {
+    let rawDate = row["Date"] || row["DATE"] || row["date"] || "";
+    return {
+      sNo: row["S.no"] ?? idx + 1,
+      machineId: row["Machine ID"] ?? row["machine_id"] ?? "",
+      date: rawDate,
+      // Keep original HH:MM format for table display
+      totalHours: row["Total Hours"] || "00:00",
+      sewing: row["Sewing Hours"] || "00:00",
+      idle: row["Idle Hours"] || "00:00",
+      rework: row["Rework Hours"] || "00:00",
+      noFeeding: row["No feeding Hours"] || "00:00",
+      meeting: row["Meeting Hours"] || "00:00",
+      maintenance: row["Maintenance Hours"] || "00:00",
+      needleBreak: row["Needle Break"] || "00:00",
+      // Add decimal versions for pie chart calculations
+      totalHoursDecimal: convertHHMMToDecimal(row["Total Hours"]) || 0,
+      sewingDecimal: convertHHMMToDecimal(row["Sewing Hours"]) || 0,
+      idleDecimal: convertHHMMToDecimal(row["Idle Hours"]) || 0,
+      reworkDecimal: convertHHMMToDecimal(row["Rework Hours"]) || 0,
+      noFeedingDecimal: convertHHMMToDecimal(row["No feeding Hours"]) || 0,
+      meetingDecimal: convertHHMMToDecimal(row["Meeting Hours"]) || 0,
+      maintenanceDecimal: convertHHMMToDecimal(row["Maintenance Hours"]) || 0,
+      needleBreakDecimal: convertHHMMToDecimal(row["Needle Break"]) || 0,
+      pt: row["PT %"] ?? 0,
+      npt: row["NPT %"] ?? 0,
+      needleRuntime: row["Needle Time %"] ?? 0,
+      sewingSpeed: row["SPM"] ?? 0,
+      stitchCount: row["Stitch Count"] ?? 0,
+      // ✅ Add tile1_productivity data to be accessible in component
+      tile1_productivity: tile1Data, //Productive Time %
+      tile2_needle_runtime: tile2Data, // Needle Runtime %
+      tile3_sewing_speed: tile3Data, // Sewing Speed
+      tile4_total_hours: tile4Data, // Total Hours
+    };
+  })
         .sort((a, b) => {
+          // Convert YYYY:MM:DD to YYYY-MM-DD for sorting
           const aDate = a.date.replace(/:/g, ":");
           const bDate = b.date.replace(/:/g, ":");
           return new Date(aDate) - new Date(bDate);
         });
 
-      console.log("Data loaded successfully:", mappedRows.length, "records");
       setData(mappedRows);
-      
     } catch (err) {
-      console.error("Error fetching data:", err);
       setData([]);
-    } finally {
-      setLoading(false);
-      hideLoading(); // ✅ Hide global loading overlay
     }
+    setLoading(false);
+    hideLoading();
   };
 
 // ✅ FIX 6: Remove the useEffect that was causing performance issues
@@ -251,13 +248,15 @@ export default function Machine({ tableOnly = false, from: propFrom = "", to: pr
 
 // ✅ FIX 1: Only fetch machine options once on component mount, not on every filter change
 useEffect(() => {
+  showLoading();
   axios
     .get("http://localhost:8000/api/poppys-machine-logs/")
     .then(res => {
       const ids = (res.data.summary || []).map(row => row["Machine ID"]);
       setMachineOptions([...new Set(ids)]);
     })
-    .catch(() => setMachineOptions([]));
+    .catch(() => setMachineOptions([]))
+    .finally(() => hideLoading());
 }, []); // ✅ Remove dependencies to fetch only once
 
 // ✅ FIX 2: Updated filtering logic to handle machine ID correctly
@@ -370,42 +369,96 @@ const availableMachineIds = getAvailableMachineIds();
   const maintenanceSum = sumByKey("maintenanceDecimal");
   const needleBreakSum = sumByKey("needleBreakDecimal");
 
-  // ✅ Recalculate tile data based on filtered results
-  const pieRow = filtered[0] || {};
-  const tile1ProductivityData = pieRow.tile1_productivity || {};
-  const tile2NeedleRuntimeData = pieRow.tile2_needle_runtime || {};
-  const tile3SewingSpeedData = pieRow.tile3_sewing_speed || {};
-  const tile4TotalHoursData = pieRow.tile4_total_hours || {};
+  // Replace the existing tile data calculation with this updated version
+  
+  // ✅ Calculate tile data based on filtered results, not from backend
+  const getTileDataFromFiltered = () => {
+    if (filtered.length === 0) {
+      return [
+        {
+          label: "Productive Time %",
+          value: "0%",
+          bg: "tile-bg-blue",
+          color: "tile-color-blue",
+        },
+        {
+          label: "Needle Runtime %", 
+          value: "0%",
+          bg: "tile-bg-green",
+          color: "tile-color-green",
+        },
+        { 
+          label: "Sewing Speed", 
+          value: "0",
+          bg: "tile-bg-orange", 
+          color: "tile-color-orange" 
+        },
+        {
+          label: "Total Hours",
+          value: "00:00",
+          bg: "tile-bg-pink",
+          color: "tile-color-pink",
+        },
+      ];
+    }
+  
+    // ✅ Calculate averages and totals from filtered data
+    const avgPT = filtered.reduce((sum, row) => sum + (parseFloat(row.pt) || 0), 0) / filtered.length;
+    const avgNeedleRuntime = filtered.reduce((sum, row) => sum + (parseFloat(row.needleRuntime) || 0), 0) / filtered.length;
+    const avgSewingSpeed = filtered.reduce((sum, row) => sum + (parseFloat(row.sewingSpeed) || 0), 0) / filtered.length;
+    
+    // ✅ Calculate total hours from filtered results
+    const totalHoursDisplay = formatHoursMins(totalHoursSum);
+  
+    return [
+      {
+        label: "Productive Time %",
+        value: `${avgPT.toFixed(2)}%`,
+        bg: "tile-bg-blue",
+        color: "tile-color-blue",
+      },
+      {
+        label: "Needle Runtime %",
+        value: `${avgNeedleRuntime.toFixed(2)}%`,
+        bg: "tile-bg-green",
+        color: "tile-color-green",
+      },
+      { 
+        label: "Sewing Speed", 
+        value: Math.round(avgSewingSpeed).toString(),
+        bg: "tile-bg-orange", 
+        color: "tile-color-orange" 
+      },
+      {
+        label: "Total Hours",
+        value: totalHoursDisplay,
+        bg: "tile-bg-pink",
+        color: "tile-color-pink",
+      },
+    ];
+  };
+  
+  // ✅ Replace the old tileData calculation
+  // Remove these old lines:
+  // const pieRow = filtered[0] || {};
+  // const tile1ProductivityData = pieRow.tile1_productivity || {};
+  // const tile2NeedleRuntimeData = pieRow.tile2_needle_runtime || {};
+  // const tile3SewingSpeedData = pieRow.tile3_sewing_speed || {};
+  // const tile4TotalHoursData = pieRow.tile4_total_hours || {};
+  
+  // const tileData = [
+  //   {
+  //     label: "Productive Time %",
+  //     value: tile1ProductivityData.productivity_percentage_average + "%" || "0%",
+  //     bg: "tile-bg-blue",
+  //     color: "tile-color-blue",
+  //   },
+  //   ... rest of old tile data
+  // ];
+  
+  // ✅ Use the new tile data calculation
+  const tileData = getTileDataFromFiltered();
 
-  // ✅ Update tile data to reflect filtered results
-  const tileData = [
-    {
-      label: "Productive Time %",
-      value: tile1ProductivityData.productivity_percentage_average + "%" || "0%",
-      bg: "tile-bg-blue",
-      color: "tile-color-blue",
-    },
-    {
-      label: "Needle Runtime %",
-      value: (pieRow.tile2_needle_runtime?.average_needle_runtime_decimal || 0) + "%",
-      bg: "tile-bg-green",
-      color: "tile-color-green",
-    },
-    { 
-      label: "Sewing Speed", 
-      value: tile3SewingSpeedData.average_sewing_speed_decimal || 0,
-      bg: "tile-bg-orange", 
-      color: "tile-color-orange" 
-    },
-    {
-      label: "Total Hours",
-      value: tile4TotalHoursData.total_hours_sum || "00:00",
-      bg: "tile-bg-pink",
-      color: "tile-color-pink",
-    },
-  ];
-
-  // ...existing pagination code...
   const pageCount = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
   const paginated = filtered.slice(
     (page - 1) * rowsPerPage,
@@ -414,7 +467,7 @@ const availableMachineIds = getAvailableMachineIds();
 
   // ✅ Updated handleReset to clear frontend filters
 // ✅ FIX 5: Updated Reset function to also fetch data
-const handleReset = async () => {
+const handleReset = () => {
   setFrom("");
   setTo("");
   setSearch("");
@@ -422,9 +475,8 @@ const handleReset = async () => {
   setRawPage(1);
   setMachineId("");
   setFiltersActive(false);
-  
   // ✅ Refresh data after reset
-  await fetchData();
+  fetchData();
 };
 
 // ✅ FIX 6: Remove the useEffect that was causing performance issues
@@ -441,20 +493,61 @@ useEffect(() => {
 
 
   // ✅ Updated Generate button to apply frontend filters
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     setPage(1); // Reset to first page when applying filters
     setFiltersActive(true);
-    
-    // ✅ Show loading and fetch data
-    await fetchData();
+    showLoading();
+    // Simulate processing time for filters
+    setTimeout(() => {
+      hideLoading();
+    }, 800);
+    // The filtering happens automatically through the filtered variable
   };
 
 
   const handleCSV = () => {
-    const csv = [
-      tableHeaders.join(","),
-      ...filtered.map((row, idx) =>
-        [
+    showLoading();
+    setTimeout(() => {
+      const csv = [
+        tableHeaders.join(","),
+        ...filtered.map((row, idx) =>
+          [
+            idx + 1,
+            row.machineId,
+            row.date,
+            row.totalHours,
+            row.sewing,
+            row.idle,
+            row.rework,
+            row.noFeeding,
+            row.meeting,
+            row.maintenance,
+            row.needleBreak,
+            row.pt,
+            row.npt,
+            row.needleRuntime,
+            row.sewingSpeed,
+            row.stitchCount,
+          ].join(",")
+        ),
+      ].join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "machine_report.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+      hideLoading();
+    }, 500);
+  };
+
+  const handleExcel = () => {
+    showLoading();
+    setTimeout(() => {
+      const wsData = [
+        tableHeaders,
+        ...filtered.map((row, idx) => [
           idx + 1,
           row.machineId,
           row.date,
@@ -466,100 +559,74 @@ useEffect(() => {
           row.meeting,
           row.maintenance,
           row.needleBreak,
-          row.pt,
-          row.npt,
-          row.needleRuntime,
+          row.pt + " %",
+          row.npt + " %",
+          row.needleRuntime + " %",
           row.sewingSpeed,
           row.stitchCount,
-        ].join(",")
-      ),
-    ].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "machine_report.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleExcel = () => {
-    const wsData = [
-      tableHeaders,
-      ...filtered.map((row, idx) => [
-        idx + 1,
-        row.machineId,
-        row.date,
-        row.totalHours,
-        row.sewing,
-        row.idle,
-        row.rework,
-        row.noFeeding,
-        row.meeting,
-        row.maintenance,
-        row.needleBreak,
-        row.pt + " %",
-        row.npt + " %",
-        row.needleRuntime + " %",
-        row.sewingSpeed,
-        row.stitchCount,
-      ])
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Report");
-    XLSX.writeFile(wb, "machine_report.xlsx");
+        ])
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Report");
+      XLSX.writeFile(wb, "machine_report.xlsx");
+      hideLoading();
+    }, 500);
   };
 
   const handleHTML = () => {
-    const html = `
-      <table border="1">
-        <thead>
-          <tr>${tableHeaders.map((h) => `<th>${h}</th>`).join("")}</tr>
-        </thead>
-        <tbody>
-          ${filtered
-            .map(
-              (row, idx) => `
-            <tr>
-              <td>${idx + 1}</td>
-              <td>${row.machineId}</td>
-              <td>${row.date}</td>
-              <td>${row.totalHours}</td>
-              <td>${row.sewing}</td>
-              <td>${row.idle}</td>
-              <td>${row.rework}</td>
-              <td>${row.noFeeding}</td>
-              <td>${row.meeting}</td>
-              <td>${row.maintenance}</td>
-              <td>${row.needleBreak}</td>
-              <td>${row.pt}</td>
-              <td>${row.npt}</td>
-              <td>${row.needleRuntime}</td>
-              <td>${row.sewingSpeed}</td>
-              <td>${row.stitchCount}</td>
-            </tr>
-          `
-            )
-            .join("")}
-        </tbody>
-      </table>
-    `;
-    const blob = new Blob([html], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "machine_report.html";
-    a.click();
-    URL.revokeObjectURL(url);
+    showLoading();
+    setTimeout(() => {
+      const html = `
+        <table border="1">
+          <thead>
+            <tr>${tableHeaders.map((h) => `<th>${h}</th>`).join("")}</tr>
+          </thead>
+          <tbody>
+            ${filtered
+              .map(
+                (row, idx) => `
+              <tr>
+                <td>${idx + 1}</td>
+                <td>${row.machineId}</td>
+                <td>${row.date}</td>
+                <td>${row.totalHours}</td>
+                <td>${row.sewing}</td>
+                <td>${row.idle}</td>
+                <td>${row.rework}</td>
+                <td>${row.noFeeding}</td>
+                <td>${row.meeting}</td>
+                <td>${row.maintenance}</td>
+                <td>${row.needleBreak}</td>
+                <td>${row.pt}</td>
+                <td>${row.npt}</td>
+                <td>${row.needleRuntime}</td>
+                <td>${row.sewingSpeed}</td>
+                <td>${row.stitchCount}</td>
+              </tr>
+            `
+              )
+              .join("")}
+          </tbody>
+        </table>
+      `;
+      const blob = new Blob([html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "machine_report.html";
+      a.click();
+      URL.revokeObjectURL(url);
+      hideLoading();
+    }, 500);
   };
 
-  const handleRawData = async () => {
+  const handleRawData = () => {
     if (showRawData) {
       setShowRawData(false);
     } else {
       setShowRawData(true);
-      await fetchRawData();
+      fetchRawData();
     }
   };
 
@@ -665,83 +732,91 @@ const filteredRawPaginated = filteredRawData.slice(
 
 // Export functions for raw data
 const handleRawCSV = () => {
-  const csv = [
-    rawDataHeaders.join(","),
-    ...filteredRawData.map((row, idx) =>
-      [
-        idx + 1, // Use filtered data index, not pagination index
-        row.machineId,
-        row.lineNumber,
-        row.operatorId,
-        row.date,
-        row.startTime,
-        row.endTime,
-        row.mode,
-        row.modeDescription,
-        row.stitchCount,
-        row.needleRuntime,
-        row.needleStopTime,
-        row.duration,
-        row.spm,
-        row.calculationValue,
-        row.txLogId,
-        row.strLogId,
-        row.createdAt,
-      ].join(",")
-    ),
-  ].join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "machine_raw_data.csv";
-  a.click();
-  URL.revokeObjectURL(url);
+  showLoading();
+  setTimeout(() => {
+    const csv = [
+      rawDataHeaders.join(","),
+      ...filteredRawData.map((row, idx) =>
+        [
+          idx + 1, // Use filtered data index, not pagination index
+          row.machineId,
+          row.lineNumber,
+          row.operatorId,
+          row.date,
+          row.startTime,
+          row.endTime,
+          row.mode,
+          row.modeDescription,
+          row.stitchCount,
+          row.needleRuntime,
+          row.needleStopTime,
+          row.duration,
+          row.spm,
+          row.calculationValue,
+          row.txLogId,
+          row.strLogId,
+          row.createdAt,
+        ].join(",")
+      ),
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "machine_raw_data.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+    hideLoading();
+  }, 500);
 };
 
 const handleRawHTML = () => {
-  const html = `
-    <table border="1">
-      <thead>
-        <tr>${rawDataHeaders.map((h) => `<th>${h}</th>`).join("")}</tr>
-      </thead>
-      <tbody>
-        ${filteredRawData
-          .map(
-            (row, idx) => `
-          <tr>
-            <td>${idx + 1}</td>
-            <td>${row.machineId}</td>
-            <td>${row.lineNumber}</td>
-            <td>${row.operatorId}</td>
-            <td>${row.date}</td>
-            <td>${row.startTime}</td>
-            <td>${row.endTime}</td>
-            <td>${row.mode}</td>
-            <td>${row.modeDescription}</td>
-            <td>${row.stitchCount}</td>
-            <td>${row.needleRuntime}</td>
-            <td>${row.needleStopTime}</td>
-            <td>${row.duration}</td>
-            <td>${row.spm}</td>
-            <td>${row.calculationValue}</td>
-            <td>${row.txLogId}</td>
-            <td>${row.strLogId}</td>
-            <td>${row.createdAt}</td>
-          </tr>
-        `
-          )
-          .join("")}
-      </tbody>
-    </table>
-  `;
-  const blob = new Blob([html], { type: "text/html" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "machine_raw_data.html";
-  a.click();
-  URL.revokeObjectURL(url);
+  showLoading();
+  setTimeout(() => {
+    const html = `
+      <table border="1">
+        <thead>
+          <tr>${rawDataHeaders.map((h) => `<th>${h}</th>`).join("")}</tr>
+        </thead>
+        <tbody>
+          ${filteredRawData
+            .map(
+              (row, idx) => `
+            <tr>
+              <td>${idx + 1}</td>
+              <td>${row.machineId}</td>
+              <td>${row.lineNumber}</td>
+              <td>${row.operatorId}</td>
+              <td>${row.date}</td>
+              <td>${row.startTime}</td>
+              <td>${row.endTime}</td>
+              <td>${row.mode}</td>
+              <td>${row.modeDescription}</td>
+              <td>${row.stitchCount}</td>
+              <td>${row.needleRuntime}</td>
+              <td>${row.needleStopTime}</td>
+              <td>${row.duration}</td>
+              <td>${row.spm}</td>
+              <td>${row.calculationValue}</td>
+              <td>${row.txLogId}</td>
+              <td>${row.strLogId}</td>
+              <td>${row.createdAt}</td>
+            </tr>
+          `
+            )
+            .join("")}
+        </tbody>
+      </table>
+    `;
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "machine_raw_data.html";
+    a.click();
+    URL.revokeObjectURL(url);
+    hideLoading();
+  }, 500);
 };
 
 // Update the RawPagination component
@@ -837,6 +912,14 @@ const RawPagination = () => (
 
   return (
  <div className="machine-root">
+    <style>
+      {`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}
+    </style>
       {/* Title and Buttons Row - Fix the export buttons to use correct functions */}
       <div className="machine-title-row">
         <div className="machine-title">
@@ -986,13 +1069,39 @@ const RawPagination = () => (
                 </tr>
               </thead>
               <tbody>
-                {filteredRawPaginated.length === 0 ? (
+                {loading ? (
+                  // Show loading rows for raw data when data is being fetched
+                  Array.from({ length: 5 }).map((_, idx) => (
+                    <tr key={`raw-loading-${idx}`}>
+                      {rawDataHeaders.map((_, colIdx) => (
+                        <td key={colIdx} style={{ textAlign: "center", padding: "20px" }}>
+                          <div style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            color: '#666'
+                          }}>
+                            <div style={{
+                              width: '16px',
+                              height: '16px',
+                              border: '2px solid #f3f3f3',
+                              borderTop: '2px solid #3498db',
+                              borderRadius: '50%',
+                              animation: 'spin 1s linear infinite'
+                            }}></div>
+                            Loading...
+                          </div>
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                ) : filteredRawPaginated.length === 0 ? (
                   <tr>
                     <td
                       colSpan={rawDataHeaders.length}
                       className="machine-table-nodata"
                     >
-                      {loading ? "Loading raw data..." : (from || to || machineId) ? "No raw data found for the selected filters." : "No raw data found."}
+                      {(from || to || machineId) ? "No raw data found for the selected filters." : "No raw data found."}
                     </td>
                   </tr>
                 ) : (
