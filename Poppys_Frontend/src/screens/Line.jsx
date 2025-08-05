@@ -48,6 +48,8 @@ const rawDataHeaders = [
   "Calculation Value",
   "TX Log ID",
   "STR Log ID",
+  "AVERG",
+  "PIECECNT",
   "Created At"
 ];
 
@@ -165,6 +167,8 @@ export default function Line({
         calculationValue: row["Calculation Value"] || row["calculation_value"] || "0",
         txLogId: row["TX Log ID"] || row["tx_log_id"] || "",
         strLogId: row["STR Log ID"] || row["str_log_id"] || "",
+        averg: row["AVERG"] || row["AVERG"] || "0",         
+        piececnt: row["PIECECNT"] || row["PIECECNT"] || "0",   
         createdAt: row["Created At"] || row["created_at"] || ""
       }));
 
@@ -428,10 +432,7 @@ export default function Line({
   const maintenanceSum = sumByKey("maintenanceDecimal");
   const needleBreakSum = sumByKey("needleBreakDecimal");
 
-  // ✅ Calculate tile data based on filtered results, not from backend
-
-  // ✅ Fix the tile data calculation to use the correct format
-  
+  // ✅ FIXED: Calculate tile data based on FILTERED data, not original data
   const getTileDataFromFiltered = () => {
     if (filtered.length === 0) {
       return [
@@ -455,83 +456,48 @@ export default function Line({
         },
         {
           label: "Total Hours",
-          value: "0h 0m",  // ✅ Changed format
+          value: "0h 0m",
           bg: "tile-bg-pink",
           color: "tile-color-pink",
         },
       ];
     }
-  
-    // ✅ Use backend tile data if available, otherwise calculate from filtered data
-    const firstRow = filtered[0] || {};
-    const hasBackendTileData = firstRow.tile1_productive_time && 
-                               Object.keys(firstRow.tile1_productive_time).length > 0;
-  
-    if (hasBackendTileData) {
-      // ✅ Use backend tile data but format correctly
-      return [
-        {
-          label: "Productive Time %",
-          value: `${(firstRow.tile1_productive_time.percentage || 0).toFixed(2)}%`,
-          bg: "tile-bg-blue",
-          color: "tile-color-blue",
-        },
-        {
-          label: "Needle Time %",
-          value: `${(firstRow.tile2_needle_time.percentage || 0).toFixed(2)}%`,
-          bg: "tile-bg-green",
-          color: "tile-color-green",
-        },
-        { 
-          label: "Sewing Speed", 
-          value: Math.round(firstRow.tile3_sewing_speed.average_spm || 0).toString(),
-          bg: "tile-bg-orange", 
-          color: "tile-color-orange" 
-        },
-        {
-          label: "Total Hours",
-          // ✅ Convert HH:MM format to "Xh Ym" format
-          value: convertHHMMToHoursMinutes(firstRow.tile4_total_hours.total_hours || "00:00"),
-          bg: "tile-bg-pink",
-          color: "tile-color-pink",
-        },
-      ];
-    } else {
-      // ✅ Calculate from filtered data as fallback
-      const avgPT = filtered.reduce((sum, row) => sum + (parseFloat(row.pt) || 0), 0) / filtered.length;
-      const avgNeedleRuntime = filtered.reduce((sum, row) => sum + (parseFloat(row.needleRuntime) || 0), 0) / filtered.length;
-      const avgSewingSpeed = filtered.reduce((sum, row) => sum + (parseFloat(row.sewingSpeed) || 0), 0) / filtered.length;
-      const totalHoursDisplay = formatHoursMins(totalHoursSum);
-  
-      return [
-        {
-          label: "Productive Time %",
-          value: `${avgPT.toFixed(2)}%`,
-          bg: "tile-bg-blue",
-          color: "tile-color-blue",
-        },
-        {
-          label: "Needle Time %",
-          value: `${avgNeedleRuntime.toFixed(2)}%`,
-          bg: "tile-bg-green",
-          color: "tile-color-green",
-        },
-        { 
-          label: "Sewing Speed", 
-          value: Math.round(avgSewingSpeed).toString(),
-          bg: "tile-bg-orange", 
-          color: "tile-color-orange" 
-        },
-        {
-          label: "Total Hours",
-          value: totalHoursDisplay,  // ✅ This already uses formatHoursMins which gives "Xh Ym" format
-          bg: "tile-bg-pink",
-          color: "tile-color-pink",
-        },
-      ];
-    }
+
+    // ✅ Calculate from FILTERED data
+    const totalFilteredHours = filtered.reduce((sum, row) => sum + (parseFloat(row.totalHoursDecimal) || 0), 0);
+    const avgPT = filtered.reduce((sum, row) => sum + (parseFloat(row.pt) || 0), 0) / filtered.length;
+    const avgNeedleRuntime = filtered.reduce((sum, row) => sum + (parseFloat(row.needleRuntime) || 0), 0) / filtered.length;
+    const avgSewingSpeed = filtered.reduce((sum, row) => sum + (parseFloat(row.sewingSpeed) || 0), 0) / filtered.length;
+    const totalHoursDisplay = formatHoursMins(totalFilteredHours);
+
+    return [
+      {
+        label: "Productive Time %",
+        value: `${(avgPT || 0).toFixed(2)}%`,
+        bg: "tile-bg-blue",
+        color: "tile-color-blue",
+      },
+      {
+        label: "Needle Time %",
+        value: `${(avgNeedleRuntime || 0).toFixed(2)}%`,
+        bg: "tile-bg-green",
+        color: "tile-color-green",
+      },
+      { 
+        label: "Sewing Speed", 
+        value: Math.round(avgSewingSpeed || 0).toString(),
+        bg: "tile-bg-orange", 
+        color: "tile-color-orange" 
+      },
+      {
+        label: "Total Hours",
+        value: totalHoursDisplay,
+        bg: "tile-bg-pink",
+        color: "tile-color-pink",
+      },
+    ];
   };
-  
+
   // ✅ Add helper function to convert HH:MM to "Xh Ym" format
   function convertHHMMToHoursMinutes(timeStr) {
     if (!timeStr || timeStr === "00:00") return "0h 0m";
@@ -540,26 +506,9 @@ export default function Line({
     return `${hours}h ${minutes}m`;
   }
   
-  // ✅ Remove these old lines:
-  // const pieRow = filtered[0] || {};
-  // const tile1ProductivityData = pieRow.tile1_productive_time || {};
-  // const tile2NeedleTimeData = pieRow.tile2_needle_time || {};
-  // const tile3SewingSpeedData = pieRow.tile3_sewing_speed || {};
-  // const tile4TotalHoursData = pieRow.tile4_total_hours || {};
-  
-  // const tiles = [
-  //   {
-  //     label: "Productive Time %",
-  //     value: tile1ProductivityData.percentage + "%" || "0%",
-  //     bg: "tile-bg-blue",
-  //     color: "tile-color-blue",
-  //   },
-  //   ... rest of old tile data
-  // ];
-  
-  // ✅ Use the new tile data calculation
+  // ✅ Use filtered data for tiles
   const tiles = getTileDataFromFiltered();
-
+  
   // ✅ Pagination calculations
   const pageCount = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
   const paginated = filtered.slice(
@@ -694,6 +643,8 @@ export default function Line({
           row.calculationValue,
           row.txLogId,
           row.strLogId,
+          row.averg,
+          row.piececnt,
           row.createdAt,
         ].join(",")
       ),
@@ -736,6 +687,8 @@ export default function Line({
               <td>${row.calculationValue}</td>
               <td>${row.txLogId}</td>
               <td>${row.strLogId}</td>
+              <td>${row.averg}</td>
+              <td>${row.piececnt}</td>            
               <td>${row.createdAt}</td>
             </tr>
           `
@@ -1057,6 +1010,8 @@ export default function Line({
                       <td>{row.calculationValue}</td>
                       <td>{row.txLogId}</td>
                       <td>{row.strLogId}</td>
+                      <td>{row.averg}</td>
+                      <td>{row.piececnt}</td>
                       <td>{row.createdAt}</td>
                     </tr>
                   ))
@@ -1226,7 +1181,7 @@ export default function Line({
             <Pagination />
           </div>
 
-          {/* ✅ Tiles Row - Use line tile data */}
+          {/* ✅ Tiles Row - Use filtered tile data */}
           <div className="machine-tiles-row machine-tiles-row-full">
             {tiles.map((tile, idx) => (
               <div
@@ -1294,10 +1249,10 @@ export default function Line({
             </div>
             <div className="machine-pie-info" style={{ flex: 1, padding: '1rem' }}>
               <div style={{ fontWeight: 600, marginBottom: 8, fontSize: '16px' }}>
-                Hours Breakdown (Filtered Results: {formatHoursMins(totalHoursSum)})
+                Hours Breakdown ({filtered.length} of {data.length} records: {formatHoursMins(totalHoursSum)})
               </div>
               <div style={{ marginBottom: '8px', fontWeight: 'bold' }}>
-                <b>Total Hours:</b> {formatHoursMins(totalHoursSum)}
+                <b>Filtered Total Hours:</b> {formatHoursMins(totalHoursSum)}
               </div>
               <div style={{ fontSize: '14px', lineHeight: '1.6' }}>
                 <div>{formatHoursMins(sewingSum)} : Sewing Hours</div>

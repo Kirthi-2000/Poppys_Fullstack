@@ -107,6 +107,8 @@ export default function Operator({ tableOnly = false, from: propFrom = "", to: p
     "Calculation Value",
     "TX Log ID",
     "STR Log ID",
+    "AVERG",
+    "PIECECNT",
     "Created At"
   ];
 
@@ -158,6 +160,8 @@ export default function Operator({ tableOnly = false, from: propFrom = "", to: p
         calculationValue: row["Calculation Value"] || row["calculation_value"] || "0",
         txLogId: row["TX Log ID"] || row["tx_log_id"] || "",
         strLogId: row["STR Log ID"] || row["str_log_id"] || "",
+        averg: row["AVERG"] || row["averg"] || "0",           // ✅ FIXED: Check both cases
+        piececnt: row["PIECECNT"] || row["piececnt"] || "0",   // ✅ FIXED: Check both cases
         createdAt: row["Created At"] || row["created_at"] || ""
       }));
 
@@ -638,6 +642,8 @@ export default function Operator({ tableOnly = false, from: propFrom = "", to: p
           row.calculationValue,
           row.txLogId,
           row.strLogId,
+          row.averg,              // ✅ ADD THIS
+          row.piececnt,           // ✅ ADD THIS
           row.createdAt,
         ].join(",")
       ),
@@ -680,6 +686,8 @@ export default function Operator({ tableOnly = false, from: propFrom = "", to: p
               <td>${row.calculationValue}</td>
               <td>${row.txLogId}</td>
               <td>${row.strLogId}</td>
+              <td>${row.averg}</td>
+              <td>${row.piececnt}</td>
               <td>${row.createdAt}</td>
             </tr>
           `
@@ -1017,6 +1025,8 @@ export default function Operator({ tableOnly = false, from: propFrom = "", to: p
                       <td>{row.calculationValue}</td>
                       <td>{row.txLogId}</td>
                       <td>{row.strLogId}</td>
+                      <td>{row.averg}</td>         {/* ✅ ADD THIS */}
+                      <td>{row.piececnt}</td>      {/* ✅ ADD THIS */}
                       <td>{row.createdAt}</td>
                     </tr>
                   ))

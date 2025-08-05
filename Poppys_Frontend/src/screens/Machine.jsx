@@ -92,27 +92,28 @@ export default function Machine({ tableOnly = false, from: propFrom = "", to: pr
   }, [propFrom, propTo, propMachineId]);
 
 // Raw data table headers
-  const rawDataHeaders = [
-    "S.No",
-    "Machine ID", 
-    "Line Number",
-    "Operator ID",
-    "Date",
-    "Start Time",
-    "End Time", 
-    "Mode",
-    "Mode Description",
-    "Stitch Count",
-    "Needle Runtime",
-    "Needle Stop Time",
-    "Duration",
-    "SPM",
-    "Calculation Value",
-    "TX Log ID",
-    "STR Log ID",
-    "Created At"
-  ];
-
+const rawDataHeaders = [
+  "S.No",
+  "Machine ID", 
+  "Line Number",
+  "Operator ID",
+  "Date",
+  "Start Time",
+  "End Time", 
+  "Mode",
+  "Mode Description",
+  "Stitch Count",
+  "Needle Runtime",
+  "Needle Stop Time",
+  "Duration",
+  "SPM",
+  "Calculation Value",
+  "TX Log ID",
+  "STR Log ID",
+  "AVERG",          // ✅ ADD THIS
+  "PIECECNT",       // ✅ ADD THIS
+  "Created At"
+];
   // Updated fetchRawData function with frontend filtering
   const fetchRawData = async () => {
     setLoading(true);
@@ -147,9 +148,10 @@ export default function Machine({ tableOnly = false, from: propFrom = "", to: pr
         calculationValue: row["Calculation Value"] || row["calculation_value"] || "0",
         txLogId: row["TX Log ID"] || row["Tx_LOGID"] || row["tx_log_id"] || "",
         strLogId: row["STR Log ID"] || row["Str_LOGID"] || row["str_log_id"] || "",
+        averg: row["AVERG"] || row["averg"] || "0",           // ✅ FIXED: Check both cases
+        piececnt: row["PIECECNT"] || row["piececnt"] || "0",   // ✅ FIXED: Check both cases
         createdAt: row["Created At"] || row["created_at"] || ""
       }));
-
       console.log("Mapped raw rows:", mappedRawRows);
       setRawData(mappedRawRows);
     } catch (err) {
@@ -755,6 +757,8 @@ const handleRawCSV = () => {
           row.calculationValue,
           row.txLogId,
           row.strLogId,
+          row.averg,              // ✅ ADD THIS
+          row.piececnt,           // ✅ ADD THIS
           row.createdAt,
         ].join(",")
       ),
@@ -800,6 +804,8 @@ const handleRawHTML = () => {
               <td>${row.calculationValue}</td>
               <td>${row.txLogId}</td>
               <td>${row.strLogId}</td>
+              <td>${row.averg}</td>          {/* ✅ ADD THIS */}
+              <td>${row.piececnt}</td>   
               <td>${row.createdAt}</td>
             </tr>
           `
@@ -1124,6 +1130,8 @@ const RawPagination = () => (
                       <td>{row.calculationValue}</td>
                       <td>{row.txLogId}</td>
                       <td>{row.strLogId}</td>
+                      <td>{row.averg}</td>         {/* ✅ ADD THIS */}
+                      <td>{row.piececnt}</td>      {/* ✅ ADD THIS */}
                       <td>{row.createdAt}</td>
                     </tr>
                   ))
