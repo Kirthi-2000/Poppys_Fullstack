@@ -129,6 +129,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Login />} />
+            <Route path="/login" element={<Login />} />
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/machine" element={<Machine />} />
